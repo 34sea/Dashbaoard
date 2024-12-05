@@ -1,40 +1,28 @@
 /* eslint-disable @next/next/no-img-element */
 'use client';
+
 import { Button } from 'primereact/button';
-import { Chart } from 'primereact/chart';
-import { Column } from 'primereact/column';
 import { DataTable } from 'primereact/datatable';
-import { Menu } from 'primereact/menu';
-import React, { useContext, useEffect, useRef, useState } from 'react';
-import { ProductService } from '../../../demo/service/ProductService';
-import { LayoutContext } from '../../../layout/context/layoutcontext';
-import Link from 'next/link';
-import { Demo } from '@/types';
-import { ChartData, ChartOptions } from 'chart.js';
+import { Column } from 'primereact/column';
 import { Dialog } from 'primereact/dialog';
-import "./dash.css"
 import { InputText } from 'primereact/inputtext';
-import { InputTextarea } from 'primereact/inputtextarea';
-import { FileUpload } from 'primereact/fileupload';
-import { InputNumber, InputNumberValueChangeEvent } from 'primereact/inputnumber';
-
-import { RadioButton, RadioButtonChangeEvent } from 'primereact/radiobutton';
-import { Rating } from 'primereact/rating';
+import React, { useContext, useEffect, useRef, useState } from 'react';
 import { Toast } from 'primereact/toast';
-import { Toolbar } from 'primereact/toolbar';
-import { classNames } from 'primereact/utils';
-import { getStockControlLista, API_HOST_STORAGE } from '@/app/api'
-
+import { LayoutContext } from '../../../layout/context/layoutcontext';
+import { getStockControlLista, API_HOST_STORAGE } from '@/app/api';
+import './dash.css';
+import { ProgressSpinner } from 'primereact/progressspinner';
+import * as XLSX from "xlsx";
 
 const Dashboard = () => {
-    const [products, setProducts] = useState<Demo.Product[]>([]);
-    const menu1 = useRef<Menu>(null);
-    const menu2 = useRef<Menu>(null);
-    const [lineOptions, setLineOptions] = useState<ChartOptions>({});
+    
     const { layoutConfig } = useContext(LayoutContext);
-    const toast = useRef<Toast>(null)
+    const toast = useRef<Toast>(null);
 
+    const [globalFilter, setGlobalFilter] = useState<string>('');
     const [RFQs, setRFQs] = useState([]);
+    const [filteredData, setFilteredData] = useState([]);
+    const [isLoading, setIsLoading] = useState(false);
     const [stockControlItem, setStockControlItem] = useState({
         id: "",
         truck_visit: "",
@@ -45,123 +33,225 @@ const Dashboard = () => {
         username: "",
         created_at: "",
         updated_at: "",
-        photo_optional: ""
+        photo_optional: "",
     });
-
     const [stockControlImg, setStockControlImg] = useState("");
-    useEffect(()=>{
-
-        const init = async ()=>{
-            try{
-                const res = await getStockControlLista();
-                console.log(res.data.data)
-                if(res.message) return toast.current?.show({
-                    severity: "error",
-                    summary: 'ERRo',
-                    detail: res.message,
-                    life: 3000
-                });
-                setRFQs(res.data.data);
-            } catch(error){
-                console.error("Failed to fetch RFQs", error)
-            }
-        }
-        init()
-    }, []);
-
-
-
-
-    const [globalFilter, setGlobalFilter] = useState('');
-
-    const formatCurrency = (value: number) => {
-        return value?.toLocaleString('en-US', {
-            style: 'currency',
-            currency: 'USD'
-        });
-    };
     const [displayBasic, setDisplayBasic] = useState(false);
     const [displayBasic2, setDisplayBasic2] = useState(false);
-    const basicDialogFooter = <Button type="button" label="OK" onClick={() => setDisplayBasic(false)} icon="pi pi-check" outlined />;
-    const basicDialogFooter2 = <Button type="button" label="OK" onClick={() => setDisplayBasic2(false)} icon="pi pi-check" outlined />;
+
+    useEffect(() => {
+        const fetchData = async () => {
+            setIsLoading(true);
+            try {
+                const res = await getStockControlLista();
+                if (res.message) {
+                    toast.current?.show({
+                        severity: "error",
+                        summary: "Erro",
+                        detail: res.message,
+                        life: 3000,
+                    });
+                } else {
+                    setRFQs(res.data.data);
+                    setFilteredData(res.data.data);
+                }
+            } catch (error) {
+                console.error("Erro ao buscar dados iniciais:", error);
+            }finally {
+                setIsLoading(false);
+            }
+        };
+        fetchData();
+    }, []);
+
+    const handleSearch = async (value: string) => {
+        setGlobalFilter(value);
+        setIsLoading(true);
+        try {
+            const res = await getStockControlLista(value); 
+            setFilteredData(res.data.data);
+        } catch (error) {
+            console.error("Erro ao filtrar dados:", error);
+        }finally {
+            setIsLoading(false);
+        }
+    };
+
+    const basicDialogFooter = (
+        <Button
+            type="button"
+            label="OK"
+            onClick={() => setDisplayBasic(false)}
+            icon="pi pi-check"
+            outlined
+        />
+    );
+
+    const basicDialogFooter2 = (
+        <Button
+            type="button"
+            label="OK"
+            onClick={() => setDisplayBasic2(false)}
+            icon="pi pi-check"
+            outlined
+        />
+    );
+
+    const exportToExcel = () => {
+        const worksheet = XLSX.utils.json_to_sheet(filteredData);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Dados");
+        XLSX.writeFile(workbook, "dados.xlsx");
+    };
 
     return (
         <div className="grid">
-            
+            {isLoading && (
+                <div className="loading-overlay">
+                    <ProgressSpinner />
+                </div>
+            )}
+            <div className="col-12 xl:col-6" style={{ border: "0px", width: "100%" }}>
+                <div className="card" style={{ width: "100%" }}>
+                    <h5>Transações</h5>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1rem", alignItems: "center" }}>
+                        <div>
+                            <strong>Total:</strong> {RFQs.length}{" "}
+                            <span style={{ marginLeft: "8px" }}>
+                                <strong>Filtrados:</strong> {filteredData.length}
+                            </span>
+                        </div>
 
-            <div className="col-12 xl:col-6" style={{border: "0px", width: "100%"}}>
-                <div className="card" style={{width: "100%"}}>
-                    <h5>Transaçõess</h5>
-                        {/* const header = (
-                            <div className="flex flex-column md:flex-row md:justify-content-between md:align-items-center">
-                                <h5 className="m-0">Manage Productskdjfdj</h5>
-                                <span className="block mt-2 md:mt-0 p-input-icon-left">
-                                    <i className="pi pi-search" />
-                                    <InputText type="search" onInput={(e) => setGlobalFilter(e.currentTarget.value)} placeholder="Search..." />
-                                </span>
-                            </div>
-                        ); */}
-
-                    <DataTable value={RFQs} rows={5} paginator responsiveLayout="scroll">
-                        <Column header="Visita" field="truck_visit"/>
-                        <Column header="Criado por" field="username"/>
-                        <Column header="Data de criação" field="created_at"/>
-                        <Column header="Entrega" body={(data) => <img className="shadow-2" src={`${API_HOST_STORAGE}/${data.photo_underdelivery}`} alt={data.photo_underdelivery} width="50" />} />
-                        <Column header="Cabeça" body={(data) => <img className="shadow-2" src={`${API_HOST_STORAGE}/${data.photo_truck_head}`} alt={data.photo_truck_head} width="50" />} />
-                        <Column header="Atrelado" body={(data) => <img className="shadow-2" src={`${API_HOST_STORAGE}/${data.photo_trailer}`} alt={data.photo_trailer} width="50" />} />
-                        <Column header="Carga" body={(data) => <img className="shadow-2" src={`${API_HOST_STORAGE}/${data.photo_load}`} alt={data.photo_load} width="50" />} />
-                        <Column header="Opcional" body={(data) => <img className="shadow-2" src={`${API_HOST_STORAGE}/${data.photo_optional}`} alt={data.photo_optional} width="50" />} />
-                        <Column body={(data)=>{
-
-                            return(
-                                <Button outlined type="button" label="Show" icon="pi pi-eye" onClick={() => {
-                                    setDisplayBasic(true);
-                                    setStockControlItem(data)
-                                }} />
-                            )
-                        }} />
-
+                        <Button
+                            label="Exportar"
+                            icon="pi pi-file-excel"
+                            className="btnExport"
+                            onClick={exportToExcel}
+                        />
+                    </div>
+                    <div style={{ marginBottom: "1rem" }} className="filtrosDIv">
+                        <label htmlFor="filter" className="filter-label" style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "1rem" }}>
+                            <i className="pi pi-filter" style={{ fontSize: "1.2rem" }}></i> 
+                            Filtro
+                        </label>
+                        <InputText
+                            id="filter"
+                            value={globalFilter}
+                            onChange={(e) => handleSearch(e.target.value)}
+                            placeholder="Pesquise por RI Ou email"
+                            className="inputFIltro"
+                        />
+                         {/* <Button
+                            label="Exportar para Excel"
+                            icon="pi pi-file-excel"
+                            className="p-button-success"
+                            onClick={exportToExcel}
+                        /> */}
+                    </div>
+                    <DataTable value={filteredData} rows={5} paginator responsiveLayout="scroll">
+                        <Column header="Visita" field="truck_visit" />
+                        <Column header="Criado por" field="username" />
+                        <Column header="Data de criação" field="created_at" />
+                        <Column
+                            header="Entrega"
+                            body={(data) => (
+                                <img
+                                    className="shadow-2"
+                                    src={`${API_HOST_STORAGE}/${data.photo_underdelivery}`}
+                                    alt={data.photo_underdelivery}
+                                    width="50"
+                                />
+                            )}
+                        />
+                        <Column
+                            header="Cabeça"
+                            body={(data) => (
+                                <img
+                                    className="shadow-2"
+                                    src={`${API_HOST_STORAGE}/${data.photo_truck_head}`}
+                                    alt={data.photo_truck_head}
+                                    width="50"
+                                />
+                            )}
+                        />
+                        <Column
+                            header="Atrelado"
+                            body={(data) => (
+                                <img
+                                    className="shadow-2"
+                                    src={`${API_HOST_STORAGE}/${data.photo_trailer}`}
+                                    alt={data.photo_trailer}
+                                    width="50"
+                                />
+                            )}
+                        />
+                        <Column
+                            header="Carga"
+                            body={(data) => (
+                                <img
+                                    className="shadow-2"
+                                    src={`${API_HOST_STORAGE}/${data.photo_load}`}
+                                    alt={data.photo_load}
+                                    width="50"
+                                />
+                            )}
+                        />
+                        <Column
+                            header="Opcional"
+                            body={(data) => (
+                                <img
+                                    className="shadow-2"
+                                    src={`${API_HOST_STORAGE}/${data.photo_optional}`}
+                                    alt={data.photo_optional}
+                                    width="50"
+                                />
+                            )}
+                        />
+                        <Column
+                            body={(data) => (
+                                <Button
+                                    outlined
+                                    type="button"
+                                    label="Show"
+                                    icon="pi pi-eye"
+                                    onClick={() => {
+                                        setDisplayBasic(true);
+                                        setStockControlItem(data);
+                                    }}
+                                />
+                            )}
+                        />
                     </DataTable>
                 </div>
-
-
-
-               
             </div>
 
-            <Dialog header="Detalhes" visible={displayBasic} style={{ minWidth: '75vw' }} modal footer={basicDialogFooter} onHide={() => setDisplayBasic(false)}>
-                          <div>
-                            
-                            <div className=''>
-                                <table border={1} style={{borderCollapse: "collapse"}}>
-                                    <thead className='headTable'>
-                                        <th>
-                                            Visita
-                                        </th>
-                                        <th>
-                                            Criado Por
-                                        </th>
-                                        <th>
-                                            Data de criação
-                                        </th>
-                                       
-
-                                    </thead>
-                                    <tr className='rowT'>
-                                        <td>
-                                            {stockControlItem.truck_visit}
-                                        </td>
-                                        <td>
-                                            {stockControlItem.username}
-                                        </td>
-                                        <td>
-                                            {stockControlItem.created_at}
-                                        </td>
-                                       
-                                    </tr>
-                                </table>
-                                <hr />
-                                <div className='containerImage'>
+            <Dialog
+                header="Detalhes"
+                visible={displayBasic}
+                style={{ minWidth: "75vw" }}
+                modal
+                footer={basicDialogFooter}
+                onHide={() => setDisplayBasic(false)}
+            >
+                <div>
+                    <table border={1} style={{ borderCollapse: "collapse" }}>
+                        <thead>
+                            <tr>
+                                <th>Visita</th>
+                                <th>Criado Por</th>
+                                <th>Data de criação</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>{stockControlItem.truck_visit}</td>
+                                <td>{stockControlItem.username}</td>
+                                <td>{stockControlItem.created_at}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <hr />
+                    <div className='containerImage'>
                                     <div className="treIage">
                                         <img className="shadow-2" src={`${API_HOST_STORAGE}/${stockControlItem.photo_underdelivery}`} alt={stockControlItem.photo_underdelivery} width="100" />
                                     
@@ -208,18 +298,21 @@ const Dashboard = () => {
                                         }}/>
                                     </div>
                                 </div>
-                            </div>
-                            
-                          </div>
-                        </Dialog>  
+                </div>
+            </Dialog>
 
-                        <Dialog header="Imagem" visible={displayBasic2} style={{ width: '55vw' }} modal footer={basicDialogFooter2} onHide={() => setDisplayBasic2(false)}>
-                            <div className="imagemL">
-                                <img className="shadow-2" src={stockControlImg} alt={stockControlImg} width="100" />
-                            </div>
-                            
-                        </Dialog> 
-            
+            <Dialog
+                header="Imagem"
+                visible={displayBasic2}
+                style={{ width: "55vw" }}
+                modal
+                footer={basicDialogFooter2}
+                onHide={() => setDisplayBasic2(false)}
+            >
+                <div className="imagemL">
+                    <img className="shadow-2" src={stockControlImg} alt={stockControlImg} width="100" />
+                </div>
+            </Dialog>
         </div>
     );
 };
