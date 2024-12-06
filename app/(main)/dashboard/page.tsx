@@ -14,6 +14,9 @@ import { getStockControlLista, API_HOST_STORAGE } from '@/app/api';
 import './dash.css';
 import { ProgressSpinner } from 'primereact/progressspinner';
 import * as XLSX from "xlsx";
+import { Tag } from 'primereact/tag';
+
+
 
 const Dashboard = () => {
     const { layoutConfig } = useContext(LayoutContext);
@@ -157,8 +160,9 @@ const Dashboard = () => {
                         />
                     </div>
 
+                    <hr />
                     
-                    <div style={{ marginBottom: "1rem" }} className="filtrosDiv">
+                    <div style={{ marginBottom: "1rem"}} className="filtrosDiv">
                         <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
                             <InputText
                                 value={globalFilter}
@@ -197,6 +201,7 @@ const Dashboard = () => {
                         <Column
                             header="Entrega"
                             body={(data) => (
+                            
                                 <img
                                     className="shadow-2"
                                     src={`${API_HOST_STORAGE}/${data.photo_underdelivery}`}
@@ -240,15 +245,30 @@ const Dashboard = () => {
                         />
                         <Column
                             header="Opcional"
-                            body={(data) => (
-                               
-                                <img
-                                    className="shadow-2"
-                                    src={`${API_HOST_STORAGE}/${data.photo_optional}`}
-                                    alt={data.photo_optional}
-                                    width="50"
-                                />
-                            )}
+                            body={(data) => {
+                                const imageUrl = `${API_HOST_STORAGE}/${data.photo_optional}`;
+                                const isImageAvailable = data.photo_optional && data.photo_optional.trim() !== "";
+
+                                return isImageAvailable ? (
+                                    <img
+                                        className="shadow-2"
+                                        src={imageUrl}
+                                        alt="Imagem Opcional"
+                                        width="50"
+                                        onError={(e) => {
+                                            e.currentTarget.src = "/images/broken-image.png"; // Fallback
+                                            e.currentTarget.alt = "Imagem não disponível";
+                                        }}
+                                    />
+                                ) : (
+                                
+                                <div className="flex items-center">
+                                    <i className="pi pi-image text-gray-500" style={{ fontSize: '1.5rem' }} />
+                                    {/* <span className="ml-2 text-sm text-gray-500">indisponível</span> */}
+                                </div>
+                                    
+                                );
+                            }}
                         />
                         <Column
                             body={(data) => (
@@ -332,7 +352,7 @@ const Dashboard = () => {
                                             setDisplayBasic2(true);
                                         }}/>
                                     </div>
-                                    <div className="treIage">
+                                    {/* <div className="treIage">
                                         <img className="shadow-2" src={`${API_HOST_STORAGE}/${stockControlItem.photo_optional}`} alt={stockControlItem.photo_optional} width="100" />
                                     
                                         <Button outlined type="button" label="Expandir" icon="pi pi-compress" className='btnExpand' onClick={() => {
@@ -340,7 +360,7 @@ const Dashboard = () => {
                                             setStockControlImg(`${API_HOST_STORAGE}/${stockControlItem.photo_optional}`)
                                             setDisplayBasic2(true);
                                         }}/>
-                                    </div>
+                                    </div> */}
                                 </div>
                 </div>
             </Dialog>

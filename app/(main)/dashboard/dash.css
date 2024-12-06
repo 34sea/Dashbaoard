@@ -87,8 +87,8 @@ table .rowT td{
     display: flex;
     justify-content: start;
     align-items: center;
-    border: 0px solid black;
-    background-color: #f9f9f9;
+    border: 1px solid black;
+    background-color: #f9f9f9!important;
     padding: 15px 10px;
     border-bottom: 1px solid #ccc;
 }
