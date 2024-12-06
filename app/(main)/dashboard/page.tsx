@@ -28,6 +28,7 @@ const Dashboard = () => {
     const [RFQs, setRFQs] = useState([]);
     const [filteredData, setFilteredData] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
+    let l = false
     const [stockControlItem, setStockControlItem] = useState({
         id: "",
         truck_visit: "",
@@ -248,8 +249,9 @@ const Dashboard = () => {
                             body={(data) => {
                                 const imageUrl = `${API_HOST_STORAGE}/${data.photo_optional}`;
                                 const isImageAvailable = data.photo_optional && data.photo_optional.trim() !== "";
-
+                                
                                 return isImageAvailable ? (
+                                    
                                     <img
                                         className="shadow-2"
                                         src={imageUrl}
@@ -275,7 +277,7 @@ const Dashboard = () => {
                                 <Button
                                     outlined
                                     type="button"
-                                    label="Show"
+                                    label="Ver"
                                     icon="pi pi-eye"
                                     onClick={() => {
                                         setDisplayBasic(true);
@@ -299,7 +301,7 @@ const Dashboard = () => {
             >
                 <div>
                     <table border={1} style={{ borderCollapse: "collapse" }}>
-                        <thead>
+                        <thead className='headTable'>
                             <tr>
                                 <th>Visita</th>
                                 <th>Criado Por</th>
@@ -307,7 +309,7 @@ const Dashboard = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            <tr>
+                            <tr className='rowT'>
                                 <td>{stockControlItem.truck_visit}</td>
                                 <td>{stockControlItem.username}</td>
                                 <td>{stockControlItem.created_at}</td>
@@ -352,15 +354,36 @@ const Dashboard = () => {
                                             setDisplayBasic2(true);
                                         }}/>
                                     </div>
-                                    {/* <div className="treIage">
-                                        <img className="shadow-2" src={`${API_HOST_STORAGE}/${stockControlItem.photo_optional}`} alt={stockControlItem.photo_optional} width="100" />
                                     
-                                        <Button outlined type="button" label="Expandir" icon="pi pi-compress" className='btnExpand' onClick={() => {
-                                            
-                                            setStockControlImg(`${API_HOST_STORAGE}/${stockControlItem.photo_optional}`)
-                                            setDisplayBasic2(true);
-                                        }}/>
-                                    </div> */}
+                                    <div className="treIage">
+                                        {stockControlItem.photo_optional ? (
+                                            <img
+                                                className="shadow-2"
+                                                src={`${API_HOST_STORAGE}/${stockControlItem.photo_optional}`}
+                                                width="100"
+                                                alt="Foto opcional"
+                                            />
+                                        ) : (
+                                            <div className="flex items-center">
+                                            <i className="pi pi-image text-gray-500" style={{ fontSize: '1.5rem' }} />
+                                            {/* <span className="ml-2 text-sm text-gray-500">indisponível</span> */}
+                                        </div>
+                                        )}
+                                        
+                                        <Button
+                                            outlined
+                                            type="button"
+                                            label="Expandir"
+                                            icon="pi pi-compress"
+                                            className="btnExpand"
+                                            onClick={() => {
+                                                if (stockControlItem.photo_optional) {
+                                                    setStockControlImg(`${API_HOST_STORAGE}/${stockControlItem.photo_optional}`);
+                                                    setDisplayBasic2(true);
+                                                }
+                                            }}
+                                        />
+                                    </div>
                                 </div>
                 </div>
             </Dialog>
