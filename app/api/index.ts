@@ -15,15 +15,20 @@ export const api = axios.create({
 });
 
 
-export const getStockControlLista = async (query: string = "") => {
+export const getStockControlLista = async (query: string = "", startDateTime?: string, endDateTime?: string) => {
     try {
-        const res = await api.get("stockcontrol/lista", { params: { query } });
+        const params: Record<string, any> = { query };
+        if (startDateTime) params.start_date_time = startDateTime;
+        if (endDateTime) params.end_date_time = endDateTime;
+
+        const res = await api.get("stockcontrol/lista", { params });
         return res.data;
     } catch (err: any) {
         console.error("Erro ao buscar lista de controle de estoque:", err);
         return err?.response?.data;
     }
 };
+
 
 
 export const getStockControlItem = async (id: string) => {

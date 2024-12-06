@@ -6,6 +6,7 @@ import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Dialog } from 'primereact/dialog';
 import { InputText } from 'primereact/inputtext';
+import { Calendar } from 'primereact/calendar';
 import React, { useContext, useEffect, useRef, useState } from 'react';
 import { Toast } from 'primereact/toast';
 import { LayoutContext } from '../../../layout/context/layoutcontext';
@@ -15,11 +16,12 @@ import { ProgressSpinner } from 'primereact/progressspinner';
 import * as XLSX from "xlsx";
 
 const Dashboard = () => {
-    
     const { layoutConfig } = useContext(LayoutContext);
     const toast = useRef<Toast>(null);
 
     const [globalFilter, setGlobalFilter] = useState<string>('');
+    const [startDate, setStartDate] = useState<Date | null>(null);
+    const [endDate, setEndDate] = useState<Date | null>(null);
     const [RFQs, setRFQs] = useState([]);
     const [filteredData, setFilteredData] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
@@ -57,7 +59,7 @@ const Dashboard = () => {
                 }
             } catch (error) {
                 console.error("Erro ao buscar dados iniciais:", error);
-            }finally {
+            } finally {
                 setIsLoading(false);
             }
         };
@@ -68,13 +70,45 @@ const Dashboard = () => {
         setGlobalFilter(value);
         setIsLoading(true);
         try {
-            const res = await getStockControlLista(value); 
+            const res = await getStockControlLista(value);
             setFilteredData(res.data.data);
         } catch (error) {
             console.error("Erro ao filtrar dados:", error);
-        }finally {
+        } finally {
             setIsLoading(false);
         }
+    };
+
+    const handleDateFilter = async () => {
+        if (!startDate || !endDate) {
+            toast.current?.show({
+                severity: "warn",
+                summary: "Filtro inválido",
+                detail: "Por favor, selecione datas de início e fim.",
+                life: 3000,
+            });
+            return;
+        }
+
+        const startDateTime = startDate.toISOString();
+        const endDateTime = endDate.toISOString();
+
+        setIsLoading(true);
+        try {
+            const res = await getStockControlLista("", startDateTime, endDateTime);
+            setFilteredData(res.data.data);
+        } catch (error) {
+            console.error("Erro ao filtrar dados por data:", error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const exportToExcel = () => {
+        const worksheet = XLSX.utils.json_to_sheet(filteredData);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Dados");
+        XLSX.writeFile(workbook, "dados.xlsx");
     };
 
     const basicDialogFooter = (
@@ -96,13 +130,6 @@ const Dashboard = () => {
             outlined
         />
     );
-
-    const exportToExcel = () => {
-        const worksheet = XLSX.utils.json_to_sheet(filteredData);
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "Dados");
-        XLSX.writeFile(workbook, "dados.xlsx");
-    };
 
     return (
         <div className="grid">
@@ -129,25 +156,40 @@ const Dashboard = () => {
                             onClick={exportToExcel}
                         />
                     </div>
-                    <div style={{ marginBottom: "1rem" }} className="filtrosDIv">
-                        <label htmlFor="filter" className="filter-label" style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "1rem" }}>
-                            <i className="pi pi-filter" style={{ fontSize: "1.2rem" }}></i> 
-                            Filtro
-                        </label>
-                        <InputText
-                            id="filter"
-                            value={globalFilter}
-                            onChange={(e) => handleSearch(e.target.value)}
-                            placeholder="Pesquise por RI Ou email"
-                            className="inputFIltro"
-                        />
-                         {/* <Button
-                            label="Exportar para Excel"
-                            icon="pi pi-file-excel"
-                            className="p-button-success"
-                            onClick={exportToExcel}
-                        /> */}
+
+                    
+                    <div style={{ marginBottom: "1rem" }} className="filtrosDiv">
+                        <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
+                            <InputText
+                                value={globalFilter}
+                                onChange={(e) => handleSearch(e.target.value)}
+                                placeholder="Pesquise por RI ou email"
+                                className="inputFiltro"
+                            />
+                            <Calendar
+                                value={startDate}
+                                onChange={(e) => setStartDate(e.value || null)}
+                                placeholder="Data início"
+                                showIcon
+                                showTime
+                                hourFormat="24"
+                                showSeconds 
+                            />
+
+                            <Calendar
+                                value={endDate}
+                                onChange={(e) => setEndDate(e.value || null)}
+                                placeholder="Data fim"
+                                showIcon
+                                showTime
+                                hourFormat="24" 
+                                showSeconds 
+                            />
+
+                            <Button label="Filtrar" icon="pi pi-filter" onClick={handleDateFilter} />
+                        </div>
                     </div>
+
                     <DataTable value={filteredData} rows={5} paginator responsiveLayout="scroll">
                         <Column header="Visita" field="truck_visit" />
                         <Column header="Criado por" field="username" />
@@ -199,6 +241,7 @@ const Dashboard = () => {
                         <Column
                             header="Opcional"
                             body={(data) => (
+                               
                                 <img
                                     className="shadow-2"
                                     src={`${API_HOST_STORAGE}/${data.photo_optional}`}
@@ -225,6 +268,7 @@ const Dashboard = () => {
                 </div>
             </div>
 
+            
             <Dialog
                 header="Detalhes"
                 visible={displayBasic}
